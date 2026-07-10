@@ -5,7 +5,7 @@ import numpy as np
 
 st.title("Poultry Farm Chicken Counter")
 
-model = YOLO("best.pt")
+model = YOLO("chicken_detector_best.pt")
 
 uploaded_file = st.file_uploader("Upload a farm photo", type=["jpg", "jpeg", "png"])
 
