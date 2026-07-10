@@ -52,8 +52,8 @@ uploaded_file = st.file_uploader("", type=["jpg", "jpeg", "png"])
 
 # 6. App Logic & Display
 if uploaded_file is not None:
-    image = Image.open(uploaded_file)
-    
+    image = Image.open(uploaded_file).convert("RGB")  # <-- FIX: forces 3-channel RGB, prevents PNG transparency crash
+
     # Run AI Detection with a clean loading spinner
     with st.spinner("Analyzing farm photo..."):
         results = model(np.array(image), conf=0.4)[0]
