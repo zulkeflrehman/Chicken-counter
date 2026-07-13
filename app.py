@@ -6,7 +6,7 @@ Detects and counts every visible chicken in an uploaded farm photo.
 
 import streamlit as st
 from ultralytics import YOLO
-from PIL import Image
+from PIL import Image, ImageDraw
 import numpy as np
 
 st.set_page_config(page_title="Poultry Farm Chicken Counter", page_icon="🐔", layout="wide")
@@ -58,14 +58,16 @@ if uploaded_file is not None:
     chicken_indices = [i for i, b in enumerate(boxes) if int(b.cls[0]) == CHICKEN_CLASS_ID]
     count = len(chicken_indices)
 
-    result_copy = results[0]
-    if 0 < len(chicken_indices) < len(boxes):
-        keep_mask = np.array([int(b.cls[0]) == CHICKEN_CLASS_ID for b in boxes])
-        result_copy.boxes = boxes[keep_mask]
-
-    annotated_bgr = result_copy.plot(line_width=2, font_size=12)
-    annotated_rgb = annotated_bgr[..., ::-1]
-    output_image = Image.fromarray(annotated_rgb)
+    # Draw only the whole-chicken boxes directly on a copy of the original
+    # image. This avoids mutating Ultralytics' internal Results/Boxes
+    # objects, which can produce corrupted output on some versions.
+    output_image = image.copy()
+    draw = ImageDraw.Draw(output_image)
+    for i in chicken_indices:
+        x1, y1, x2, y2 = [float(v) for v in boxes[i].xyxy[0].tolist()]
+        conf = float(boxes[i].conf[0].item())
+        draw.rectangle([x1, y1, x2, y2], outline="lime", width=3)
+        draw.text((x1 + 2, max(0, y1 - 14)), f"{conf:.0%}", fill="lime")
 
     with col2:
         st.image(output_image, caption="Detection Result", use_container_width=True)
