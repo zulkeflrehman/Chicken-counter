@@ -59,7 +59,7 @@ if uploaded_file is not None:
         # augment=True runs test-time augmentation (multiple flipped/scaled
         # passes merged together), which noticeably improves recall on
         # harder images at the cost of a bit more processing time.
-        results = model(image, conf=confidence, augment=True, imgsz=1280, verbose=False)
+        results = model(image, conf=confidence, augment=True, imgsz=960, verbose=False)
 
     boxes = results[0].boxes
     chicken_indices = [i for i, b in enumerate(boxes) if int(b.cls[0]) == CHICKEN_CLASS_ID]
@@ -72,7 +72,7 @@ if uploaded_file is not None:
     # just below the cutoff due to unusual lighting, angle, or distance.
     if count == 0 and confidence > 0.15:
         with st.spinner("No detections at this threshold — retrying at lower sensitivity..."):
-            fallback_results = model(image, conf=0.15, augment=True, imgsz=1280, verbose=False)
+            fallback_results = model(image, conf=0.15, augment=True, imgsz=960, verbose=False)
         fallback_boxes = fallback_results[0].boxes
         fallback_indices = [i for i, b in enumerate(fallback_boxes) if int(b.cls[0]) == CHICKEN_CLASS_ID]
         if fallback_indices:
