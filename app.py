@@ -70,7 +70,7 @@ if uploaded_file is not None:
         draw.text((x1 + 2, max(0, y1 - 14)), f"{conf:.0%}", fill="lime")
 
     with col2:
-        st.image(output_image, caption="Detection Result", use_container_width=True)
+        st.image(output_image, caption="Detection Result", use_column_width=True)
 
     if count == 0:
         st.warning("No chickens detected. Try a clearer or closer image, or lower the confidence threshold.")
