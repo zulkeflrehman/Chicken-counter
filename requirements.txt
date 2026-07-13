@@ -1,4 +1,4 @@
-ultralytics==8.2.0
+ultralytics==8.4.92
 gradio==4.44.0
 huggingface_hub==0.24.6
 Pillow==10.4.0
