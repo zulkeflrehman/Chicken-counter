@@ -6,7 +6,7 @@ Detects and counts every visible chicken in an uploaded farm photo.
 
 import streamlit as st
 from ultralytics import YOLO
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageOps
 import numpy as np
 
 st.set_page_config(page_title="Poultry Farm Chicken Counter", page_icon="🐔", layout="wide")
@@ -50,13 +50,36 @@ with col1:
 
 if uploaded_file is not None:
     image = Image.open(uploaded_file).convert("RGB")
+    # Fix rotated phone photos: some cameras save an orientation flag
+    # instead of physically rotating pixels. Without this, a sideways
+    # or upside-down chicken can look unrecognizable to the model.
+    image = ImageOps.exif_transpose(image)
 
     with st.spinner("Detecting chickens..."):
-        results = model(image, conf=confidence, verbose=False)
+        # augment=True runs test-time augmentation (multiple flipped/scaled
+        # passes merged together), which noticeably improves recall on
+        # harder images at the cost of a bit more processing time.
+        results = model(image, conf=confidence, augment=True, verbose=False)
 
     boxes = results[0].boxes
     chicken_indices = [i for i, b in enumerate(boxes) if int(b.cls[0]) == CHICKEN_CLASS_ID]
     count = len(chicken_indices)
+    used_fallback = False
+
+    # If nothing was found at the chosen threshold, automatically retry
+    # at a much lower confidence rather than just reporting zero. This
+    # catches cases where the model "saw" the chickens but scored them
+    # just below the cutoff due to unusual lighting, angle, or distance.
+    if count == 0 and confidence > 0.15:
+        with st.spinner("No detections at this threshold — retrying at lower sensitivity..."):
+            fallback_results = model(image, conf=0.15, augment=True, verbose=False)
+        fallback_boxes = fallback_results[0].boxes
+        fallback_indices = [i for i, b in enumerate(fallback_boxes) if int(b.cls[0]) == CHICKEN_CLASS_ID]
+        if fallback_indices:
+            boxes = fallback_boxes
+            chicken_indices = fallback_indices
+            count = len(chicken_indices)
+            used_fallback = True
 
     # Draw only the whole-chicken boxes directly on a copy of the original
     # image. This avoids mutating Ultralytics' internal Results/Boxes
@@ -73,7 +96,9 @@ if uploaded_file is not None:
         st.image(output_image, caption="Detection Result", use_column_width=True)
 
     if count == 0:
-        st.warning("No chickens detected. Try a clearer or closer image, or lower the confidence threshold.")
+        st.warning("No chickens detected, even at a lower sensitivity. Try a clearer, closer, or better-lit image.")
+    elif used_fallback:
+        st.info(f"Detected {count} chicken{'s' if count != 1 else ''} at reduced sensitivity — please double-check this result manually, as confidence is lower than usual.")
     elif count == 1:
         st.success("We detected 1 chicken in the poultry farm.")
     else:
